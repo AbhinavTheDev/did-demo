@@ -1,0 +1,128 @@
+client-demo\callback.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Processing Authentication - DID Auth Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="./config.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+        <div id="processing" class="text-center">
+            <div class="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <h2 class="text-xl font-semibold mb-2">Processing Authentication</h2>
+            <p class="text-gray-600">Please wait while we complete your sign-in...</p>
+        </div>
+
+        <div id="success" class="text-center hidden">
+            <svg class="w-12 h-12 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            <h2 class="text-xl font-semibold mb-2">Authentication Successful</h2>
+            <p class="text-gray-600 mb-4">You have successfully signed in with your DID.</p>
+            <button id="continue-btn" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition">
+                Continue to App
+            </button>
+        </div>
+
+        <div id="error" class="text-center hidden">
+            <svg class="w-12 h-12 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h2 class="text-xl font-semibold mb-2">Authentication Failed</h2>
+            <p id="error-message" class="text-gray-600 mb-4">An error occurred during authentication.</p>
+            <button id="try-again-btn" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition">
+                Try Again
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            const processingSection = document.getElementById('processing');
+            const successSection = document.getElementById('success');
+            const errorSection = document.getElementById('error');
+            const errorMessage = document.getElementById('error-message');
+            const continueBtn = document.getElementById('continue-btn');
+            const tryAgainBtn = document.getElementById('try-again-btn');
+            
+            // Parse URL parameters
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code');
+            const state = params.get('state');
+            const error = params.get('error');
+            
+            // Verify state to prevent CSRF attacks
+            const savedState = localStorage.getItem('did_auth_state');
+            localStorage.removeItem('did_auth_state'); // Clear it immediately
+            
+            if (error) {
+                showError(`Authentication error: ${error}`);
+                return;
+            }
+            
+            if (!code) {
+                showError('No authorization code received');
+                return;
+            }
+            
+            if (state !== savedState) {
+                showError('Invalid state parameter, possible CSRF attack');
+                return;
+            }
+            
+            try {
+                // Exchange code for token
+                const tokenResponse = await fetch(`${CONFIG.AUTH_SERVER}/api/auth/token`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        client_id: CONFIG.CLIENT_ID,
+                        client_secret: CONFIG.CLIENT_SECRET,
+                        grant_type: 'authorization_code'
+                    })
+                });
+                
+                if (!tokenResponse.ok) {
+                    const errorData = await tokenResponse.json();
+                    throw new Error(errorData.error || 'Failed to exchange code for token');
+                }
+                
+                const tokenData = await tokenResponse.json();
+                
+                // Save the token and expiry
+                localStorage.setItem('did_auth_token', tokenData.access_token);
+                localStorage.setItem('did_auth_expiry', (Date.now() + (tokenData.expires_in * 1000)).toString());
+                
+                // Show success message
+                processingSection.classList.add('hidden');
+                successSection.classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Token exchange error:', error);
+                showError(error.message || 'Failed to complete authentication');
+            }
+            
+            function showError(message) {
+                processingSection.classList.add('hidden');
+                errorSection.classList.remove('hidden');
+                errorMessage.textContent = message;
+            }
+            
+            // Event listeners for buttons
+            continueBtn.addEventListener('click', function() {
+                window.location.href = '/'; // Redirect to main page
+            });
+            
+            tryAgainBtn.addEventListener('click', function() {
+                window.location.href = '/'; // Redirect to main page
+            });
+        });
+    </script>
+</body>
+</html>
