@@ -1,127 +1,198 @@
-client-demo\callback.html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Processing Authentication - DID Auth Demo</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="./config.js"></script>
+    <title>DID Auth Callback</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
 </head>
 <body class="bg-gray-100 min-h-screen flex items-center justify-center">
-    <div class="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
-        <div id="processing" class="text-center">
+    <div class="max-w-md w-full bg-white p-6 rounded-lg shadow-md">
+        <div id="loading" class="">
             <div class="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <h2 class="text-xl font-semibold mb-2">Processing Authentication</h2>
-            <p class="text-gray-600">Please wait while we complete your sign-in...</p>
+            <p class="text-center">Processing authentication...</p>
         </div>
-
-        <div id="success" class="text-center hidden">
-            <svg class="w-12 h-12 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        
+        <div id="success" class="hidden text-center">
+            <svg class="w-16 h-16 text-green-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
-            <h2 class="text-xl font-semibold mb-2">Authentication Successful</h2>
-            <p class="text-gray-600 mb-4">You have successfully signed in with your DID.</p>
-            <button id="continue-btn" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition">
-                Continue to App
+            <h2 class="text-xl font-bold mb-2">Authentication Successful</h2>
+            <p class="mb-4">You have successfully authenticated with your DID.</p>
+            <button id="continue-btn" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+                Continue
             </button>
         </div>
-
-        <div id="error" class="text-center hidden">
-            <svg class="w-12 h-12 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        
+        <div id="error" class="hidden text-center">
+            <svg class="w-16 h-16 text-red-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-            <h2 class="text-xl font-semibold mb-2">Authentication Failed</h2>
-            <p id="error-message" class="text-gray-600 mb-4">An error occurred during authentication.</p>
-            <button id="try-again-btn" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition">
-                Try Again
-            </button>
+            <h2 class="text-xl font-bold mb-2">Authentication Failed</h2>
+            <p id="error-message" class="mb-4">An error occurred during authentication.</p>
+            <div id="error-details" class="text-left text-xs bg-gray-100 p-2 mb-4 rounded overflow-auto max-h-40 hidden"></div>
+            <div class="flex space-x-4">
+                <button id="retry-btn" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+                    Try Again
+                </button>
+                <button id="debug-btn" class="flex-shrink-0 bg-gray-600 text-white py-2 px-4 rounded hover:bg-gray-700">
+                    Debug
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', async function() {
-            const processingSection = document.getElementById('processing');
-            const successSection = document.getElementById('success');
-            const errorSection = document.getElementById('error');
-            const errorMessage = document.getElementById('error-message');
-            const continueBtn = document.getElementById('continue-btn');
-            const tryAgainBtn = document.getElementById('try-again-btn');
+        // Configuration
+        const CONFIG = {
+            AUTH_SERVER: 'http://localhost:3000',
+            CLIENT_ID: 'c910e5d9118d3417234f556887765d73'
+        };
+        
+        // DOM elements
+        const loadingSection = document.getElementById('loading');
+        const successSection = document.getElementById('success');
+        const errorSection = document.getElementById('error');
+        const errorMessage = document.getElementById('error-message');
+        const errorDetails = document.getElementById('error-details');
+        const continueBtn = document.getElementById('continue-btn');
+        const retryBtn = document.getElementById('retry-btn');
+        const debugBtn = document.getElementById('debug-btn');
+        
+        // Debug mode
+        const isDebug = true; // Set to false in production
+        
+        // Function to show error
+        function showError(message, details = null) {
+            loadingSection.classList.add('hidden');
+            errorSection.classList.remove('hidden');
+            errorMessage.textContent = message;
             
-            // Parse URL parameters
-            const params = new URLSearchParams(window.location.search);
-            const code = params.get('code');
-            const state = params.get('state');
-            const error = params.get('error');
+            if (details && isDebug) {
+                errorDetails.innerHTML = `<pre>${JSON.stringify(details, null, 2)}</pre>`;
+                debugBtn.classList.remove('hidden');
+            } else {
+                errorDetails.classList.add('hidden');
+                debugBtn.classList.add('hidden');
+            }
+        }
+        
+        // Toggle debug details
+        debugBtn.addEventListener('click', function() {
+            errorDetails.classList.toggle('hidden');
+        });
+        
+        // Function to show success
+        function showSuccess() {
+            loadingSection.classList.add('hidden');
+            successSection.classList.remove('hidden');
+        }
+        
+        // Function to handle errors during fetch
+        async function handleResponse(response) {
+            const contentType = response.headers.get("content-type");
+            let responseData;
             
-            // Verify state to prevent CSRF attacks
-            const savedState = localStorage.getItem('did_auth_state');
-            localStorage.removeItem('did_auth_state'); // Clear it immediately
-            
-            if (error) {
-                showError(`Authentication error: ${error}`);
-                return;
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                responseData = await response.json();
+            } else {
+                responseData = await response.text();
             }
             
-            if (!code) {
-                showError('No authorization code received');
-                return;
+            if (!response.ok) {
+                const errorMsg = responseData.error || `Error: ${response.status}`;
+                throw { message: errorMsg, details: responseData, status: response.status };
             }
+            
+            return responseData;
+        }
+        
+        // Parse URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+        const error = urlParams.get('error');
+        
+        // Log parameters for debugging
+        console.log("Callback parameters:", { code, state, error });
+        
+        // Function to retry the flow from the beginning
+        function restartAuthFlow() {
+            // Clear any stored data
+            localStorage.removeItem('auth_state');
+            localStorage.removeItem('did_auth_token');
+            localStorage.removeItem('did_token_expiry');
+            
+            // Redirect back to the login page
+            window.location.href = 'index.html';
+        }
+        
+        // Check for errors
+        if (error) {
+            showError(`Auth server returned an error: ${error}`);
+        } else if (!code) {
+            showError('No authorization code received');
+        } else {
+            // Verify state parameter
+            const savedState = localStorage.getItem('auth_state');
+            localStorage.removeItem('auth_state'); // Clear immediately
             
             if (state !== savedState) {
-                showError('Invalid state parameter, possible CSRF attack');
-                return;
+                showError('Invalid state parameter. Possible CSRF attack.', { 
+                    receivedState: state, 
+                    savedState 
+                });
             }
             
-            try {
-                // Exchange code for token
-                const tokenResponse = await fetch(`${CONFIG.AUTH_SERVER}/api/auth/token`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        code: code,
-                        client_id: CONFIG.CLIENT_ID,
-                        client_secret: CONFIG.CLIENT_SECRET,
-                        grant_type: 'authorization_code'
-                    })
-                });
+            // Exchange code for token - first try with improved error handling
+            fetch(`${CONFIG.AUTH_SERVER}/api/auth/token`, {
+                method: 'POST',
+                mode: 'cors',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    code: code,
+                    client_id: CONFIG.CLIENT_ID
+                })
+            })
+            .then(handleResponse)
+            .then(data => {
+                console.log("Token exchange successful:", data);
                 
-                if (!tokenResponse.ok) {
-                    const errorData = await tokenResponse.json();
-                    throw new Error(errorData.error || 'Failed to exchange code for token');
+                // Store the token
+                localStorage.setItem('did_auth_token', data.access_token);
+                
+                // Also store token expiry time if provided
+                if (data.expires_in) {
+                    const expiryTime = Date.now() + (data.expires_in * 1000);
+                    localStorage.setItem('did_token_expiry', expiryTime);
                 }
                 
-                const tokenData = await tokenResponse.json();
-                
-                // Save the token and expiry
-                localStorage.setItem('did_auth_token', tokenData.access_token);
-                localStorage.setItem('did_auth_expiry', (Date.now() + (tokenData.expires_in * 1000)).toString());
-                
-                // Show success message
-                processingSection.classList.add('hidden');
-                successSection.classList.remove('hidden');
-                
-            } catch (error) {
+                showSuccess();
+            })
+            .catch(error => {
                 console.error('Token exchange error:', error);
-                showError(error.message || 'Failed to complete authentication');
-            }
-            
-            function showError(message) {
-                processingSection.classList.add('hidden');
-                errorSection.classList.remove('hidden');
-                errorMessage.textContent = message;
-            }
-            
-            // Event listeners for buttons
-            continueBtn.addEventListener('click', function() {
-                window.location.href = '/'; // Redirect to main page
+                
+                // Special handling for invalid auth code - likely Next.js server restart
+                if (error.status === 400 && error.message.includes('authorization code')) {
+                    showError('Your authentication session expired. Please try again.', error);
+                } else {
+                    showError(
+                        error.message || 'Failed to complete authentication',
+                        isDebug ? error.details || error : null
+                    );
+                }
             });
-            
-            tryAgainBtn.addEventListener('click', function() {
-                window.location.href = '/'; // Redirect to main page
-            });
+        }
+        
+        // Button event listeners
+        continueBtn.addEventListener('click', function() {
+            window.location.href = 'index.html';
+        });
+        
+        retryBtn.addEventListener('click', function() {
+            restartAuthFlow();
         });
     </script>
 </body>

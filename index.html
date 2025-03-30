@@ -1,68 +1,319 @@
+<!-- Update your index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DID Auth Demo Client</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="./config.js"></script>
-    <script src="./auth.js" defer></script>
+    <title>DID Authentication Demo</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <nav class="bg-white shadow-md p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold text-blue-600">DID Client Demo</h1>
-            <div id="auth-status" class="flex items-center">
-                <!-- Status will be dynamically inserted here -->
-            </div>
-        </div>
-    </nav>
-
-    <main class="container mx-auto p-6">
-        <!-- Pre-auth content -->
-        <div id="pre-auth" class="max-w-md mx-auto bg-white rounded-lg shadow-md p-8 mt-10">
-            <h2 class="text-xl font-semibold mb-4 text-center">Welcome to the Demo App</h2>
-            <p class="mb-6 text-gray-600">This is a demonstration of DID authentication integration. Click the button below to sign in with your DID credentials.</p>
-            
-            <button id="login-button" class="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 transition">
-                Sign in with DID
-            </button>
-        </div>
-
-        <!-- Post-auth content -->
-        <div id="post-auth" class="max-w-md mx-auto bg-white rounded-lg shadow-md p-8 mt-10 hidden">
-            <h2 class="text-xl font-semibold mb-4 text-center">Welcome Back!</h2>
-            <div class="border-t border-b py-4 my-4">
-                <div class="mb-2">
-                    <span class="font-medium">Name:</span>
-                    <span id="user-name" class="ml-2">Loading...</span>
-                </div>
-                <div class="mb-2">
-                    <span class="font-medium">Email:</span>
-                    <span id="user-email" class="ml-2">Loading...</span>
-                </div>
-                <div class="mb-2">
-                    <span class="font-medium">DID:</span>
-                    <span id="user-did" class="ml-2 break-all text-xs">Loading...</span>
-                </div>
-                <div>
-                    <span class="font-medium">Wallet Address:</span>
-                    <span id="user-address" class="ml-2 break-all text-xs">Loading...</span>
-                </div>
+<body class="bg-gray-100 min-h-screen p-6">
+    <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
+        <h1 class="text-2xl font-bold mb-6">DID Authentication Demo</h1>
+        
+        <!-- Authentication Status -->
+        <div id="auth-status" class="mb-6 p-4 border rounded">
+            <div id="not-authenticated" class="">
+                <p class="mb-4">You are not authenticated. Click below to sign in with DID.</p>
+                <button id="login-btn" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
+                    Sign in with DID
+                </button>
             </div>
             
-            <button id="logout-button" class="w-full bg-red-600 text-white py-3 px-4 rounded-md hover:bg-red-700 transition">
-                Sign Out
-            </button>
-        </div>
-
-        <!-- Loading animation -->
-        <div id="loading" class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 z-50 hidden">
-            <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full">
-                <div class="animate-spin w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-                <p class="text-center text-gray-700">Processing authentication...</p>
+            <div id="authenticated" class="hidden">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <h2 class="text-xl font-bold mb-2">Authenticated User</h2>
+                        <p id="auth-time" class="text-sm text-gray-600 mb-4"></p>
+                        <table class="min-w-full mb-4">
+                            <tbody>
+                                <tr>
+                                    <td class="py-1 pr-4 font-medium">User:</td>
+                                    <td id="user-name" class="py-1">Loading...</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1 pr-4 font-medium">Email:</td>
+                                    <td id="user-email" class="py-1">Loading...</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1 pr-4 font-medium">DID:</td>
+                                    <td id="user-did" class="break-all py-1">Loading...</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-1 pr-4 font-medium">Address:</td>
+                                    <td id="user-address" class="break-all py-1">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button id="logout-btn" class="bg-red-600 text-white py-1 px-3 rounded hover:bg-red-700">
+                        Sign Out
+                    </button>
+                </div>
+                
+                <div id="token-info" class="text-xs bg-gray-50 p-2 mt-4 rounded hidden">
+                    <p class="font-medium mb-1">Token Information:</p>
+                    <p id="token-display" class="break-all"></p>
+                    <p id="token-expiry" class="mt-1"></p>
+                </div>
             </div>
         </div>
-    </main>
+        
+        <!-- Loading State -->
+        <div id="loading" class="hidden mb-6 p-4 border rounded">
+            <div class="animate-spin w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p class="text-center">Loading...</p>
+        </div>
+        
+        <!-- Error State -->
+        <div id="error-container" class="hidden mb-6 p-4 border border-red-200 bg-red-50 rounded">
+            <h3 class="font-bold text-red-700 mb-2">Error</h3>
+            <p id="error-message" class="text-red-700"></p>
+            <button id="dismiss-error" class="mt-2 bg-red-600 text-white py-1 px-3 rounded hover:bg-red-700">
+                Dismiss
+            </button>
+        </div>
+        
+        <!-- Debug Controls (only for development) -->
+        <div id="debug-container" class="mb-6 p-4 border rounded">
+            <h3 class="font-bold mb-2 flex justify-between items-center">
+                <span>Debug Tools</span>
+                <button id="toggle-debug" class="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded">
+                    Show/Hide
+                </button>
+            </h3>
+            <div id="debug-content" class="hidden">
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button id="debug-check-token" class="bg-gray-600 text-white py-1 px-3 rounded hover:bg-gray-700">
+                        Check Token
+                    </button>
+                    <button id="debug-clear-storage" class="bg-gray-600 text-white py-1 px-3 rounded hover:bg-gray-700">
+                        Clear Storage
+                    </button>
+                </div>
+                <pre id="debug-output" class="text-xs bg-gray-100 p-2 h-32 overflow-auto"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            AUTH_SERVER: 'http://localhost:3000',
+            CLIENT_ID: 'c910e5d9118d3417234f556887765d73',
+            REDIRECT_URI: `${window.location.origin}/callback.html`,
+            AUTH_STORAGE_KEY: 'did_auth_token',
+            AUTH_EXPIRY_KEY: 'did_token_expiry'
+        };
+        
+        // DOM elements
+        const notAuthenticated = document.getElementById('not-authenticated');
+        const authenticated = document.getElementById('authenticated');
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const loading = document.getElementById('loading');
+        const errorContainer = document.getElementById('error-container');
+        const errorMessage = document.getElementById('error-message');
+        const dismissError = document.getElementById('dismiss-error');
+        const userName = document.getElementById('user-name');
+        const userEmail = document.getElementById('user-email');
+        const userDid = document.getElementById('user-did');
+        const userAddress = document.getElementById('user-address');
+        const authTime = document.getElementById('auth-time');
+        const tokenInfo = document.getElementById('token-info');
+        const tokenDisplay = document.getElementById('token-display');
+        const tokenExpiry = document.getElementById('token-expiry');
+        const debugContainer = document.getElementById('debug-container');
+        const toggleDebug = document.getElementById('toggle-debug');
+        const debugContent = document.getElementById('debug-content');
+        const debugOutput = document.getElementById('debug-output');
+        const debugCheckToken = document.getElementById('debug-check-token');
+        const debugClearStorage = document.getElementById('debug-clear-storage');
+        
+        // Flag for debug mode (development only)
+        const isDebug = true;
+        
+        // Function to show an error message
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorContainer.classList.remove('hidden');
+            loading.classList.add('hidden');
+        }
+        
+        // Function to log to debug output
+        function debugLog(message, data = null) {
+            if (isDebug) {
+                const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+                let logMessage = `[${timestamp}] ${message}`;
+                
+                if (data) {
+                    logMessage += '\n' + JSON.stringify(data, null, 2);
+                }
+                
+                debugOutput.textContent = logMessage + '\n\n' + debugOutput.textContent;
+            }
+        }
+        
+        // Function to check authentication status
+        async function checkAuth() {
+            const token = localStorage.getItem(CONFIG.AUTH_STORAGE_KEY);
+            const expiry = localStorage.getItem(CONFIG.AUTH_EXPIRY_KEY);
+            
+            // Check if token exists and is not expired
+            if (token && expiry && parseInt(expiry) > Date.now()) {
+                // Show authenticated state
+                notAuthenticated.classList.add('hidden');
+                authenticated.classList.remove('hidden');
+                
+                // Update authentication time
+                const authDate = new Date(parseInt(expiry) - (7 * 24 * 60 * 60 * 1000)); // Assume 7 days validity
+                authTime.textContent = `Authenticated on ${authDate.toLocaleDateString()} at ${authDate.toLocaleTimeString()}`;
+                
+                // Display token info in debug mode
+                if (isDebug) {
+                    tokenInfo.classList.remove('hidden');
+                    tokenDisplay.textContent = `${token.substring(0, 20)}...${token.substring(token.length - 20)}`;
+                    
+                    const expiryDate = new Date(parseInt(expiry));
+                    tokenExpiry.textContent = `Expires on ${expiryDate.toLocaleDateString()} at ${expiryDate.toLocaleTimeString()}`;
+                }
+                
+                // Fetch user info from API
+                await fetchUserInfo(token);
+            } else {
+                // Clear any expired token
+                if (token) {
+                    localStorage.removeItem(CONFIG.AUTH_STORAGE_KEY);
+                    localStorage.removeItem(CONFIG.AUTH_EXPIRY_KEY);
+                }
+                
+                // Show non-authenticated state
+                notAuthenticated.classList.remove('hidden');
+                authenticated.classList.add('hidden');
+            }
+        }
+        
+        // Fetch user info with token
+        async function fetchUserInfo(token) {
+            debugLog("Fetching user info with token", { tokenPrefix: token.substring(0, 10) + "..." });
+            
+            try {
+                // Show loading state for user info
+                userName.textContent = "Loading...";
+                userEmail.textContent = "Loading...";
+                userDid.textContent = "Loading...";
+                userAddress.textContent = "Loading...";
+                
+                const response = await fetch(`${CONFIG.AUTH_SERVER}/api/auth/userinfo`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    mode: 'cors'
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    debugLog("Error fetching user info", { 
+                        status: response.status, 
+                        statusText: response.statusText,
+                        error: errorData
+                    });
+                    throw new Error(errorData.error || 'Failed to fetch user info');
+                }
+                
+                const userData = await response.json();
+                debugLog("User info received", userData);
+                
+                // Update UI with user data
+                userName.textContent = userData.name || 'Not provided';
+                userEmail.textContent = userData.email || 'Not provided';
+                userDid.textContent = userData.did || 'Not available';
+                userAddress.textContent = userData.address || 'Not available';
+            } catch (error) {
+                console.error('Error fetching user info:', error);
+                debugLog("Error in fetchUserInfo", { message: error.message });
+                
+                // Show error in user info fields
+                userName.textContent = "Error loading data";
+                userEmail.textContent = "Error loading data";
+                userDid.textContent = "Error loading data";
+                userAddress.textContent = "Error loading data";
+                
+                // If it's an auth error, sign out
+                if (error.message.includes('token') || error.message.includes('unauthorized')) {
+                    localStorage.removeItem(CONFIG.AUTH_STORAGE_KEY);
+                    localStorage.removeItem(CONFIG.AUTH_EXPIRY_KEY);
+                    setTimeout(checkAuth, 2000); // Check auth again after delay
+                }
+            }
+        }
+        
+        // Handle login button click
+        loginBtn.addEventListener('click', function() {
+            // Generate a random state parameter to prevent CSRF
+            const state = Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('auth_state', state);
+            
+            // Construct the authorization URL
+            const authUrl = new URL(`${CONFIG.AUTH_SERVER}/auth/login`);
+            authUrl.searchParams.append('client_id', CONFIG.CLIENT_ID);
+            authUrl.searchParams.append('redirect_uri', CONFIG.REDIRECT_URI);
+            authUrl.searchParams.append('state', state);
+            
+            debugLog("Redirecting to auth page", { url: authUrl.toString() });
+            
+            // Redirect to the authorization page
+            window.location.href = authUrl.toString();
+        });
+        
+        // Handle logout button click
+        logoutBtn.addEventListener('click', function() {
+            localStorage.removeItem(CONFIG.AUTH_STORAGE_KEY);
+            localStorage.removeItem(CONFIG.AUTH_EXPIRY_KEY);
+            debugLog("Logged out user");
+            checkAuth();
+        });
+        
+        // Handle dismiss error button
+        dismissError.addEventListener('click', function() {
+            errorContainer.classList.add('hidden');
+        });
+        
+        // Toggle debug info
+        toggleDebug.addEventListener('click', function() {
+            debugContent.classList.toggle('hidden');
+        });
+        
+        // Debug: Check token
+        debugCheckToken.addEventListener('click', function() {
+            const token = localStorage.getItem(CONFIG.AUTH_STORAGE_KEY);
+            const expiry = localStorage.getItem(CONFIG.AUTH_EXPIRY_KEY);
+            
+            debugLog("Current token state", {
+                hasToken: !!token,
+                tokenPrefix: token ? token.substring(0, 10) + "..." : null,
+                expiry: expiry ? new Date(parseInt(expiry)).toISOString() : null,
+                isExpired: expiry ? parseInt(expiry) < Date.now() : true
+            });
+        });
+        
+        // Debug: Clear storage
+        debugClearStorage.addEventListener('click', function() {
+            localStorage.removeItem(CONFIG.AUTH_STORAGE_KEY);
+            localStorage.removeItem(CONFIG.AUTH_EXPIRY_KEY);
+            localStorage.removeItem('auth_state');
+            debugLog("Cleared all authentication storage");
+            checkAuth();
+        });
+        
+        // Hide debug panel in production
+        if (!isDebug) {
+            debugContainer.classList.add('hidden');
+        }
+        
+        // Initialize the page
+        checkAuth();
+    </script>
 </body>
 </html>
