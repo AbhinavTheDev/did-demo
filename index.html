@@ -1,319 +1,148 @@
-<!-- Update your index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DID Authentication Demo</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 30px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .auth-btn {
+            background-color: #4361ee;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: block;
+            margin: 30px auto;
+        }
+        .auth-btn:hover {
+            background-color: #3a56d4;
+        }
+        #auth-status {
+            text-align: center;
+            font-size: 18px;
+            margin-top: 20px;
+            font-weight: bold;
+            min-height: 30px;
+        }
+        .verified {
+            color: #2ecc71;
+        }
+        .info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #4361ee;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 4px 4px 0;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen p-6">
-    <div class="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6">
-        <h1 class="text-2xl font-bold mb-6">DID Authentication Demo</h1>
+<body>
+    <header>
+        <h1>DID Authentication Demo</h1>
+        <p>Showcase of the DID Authentication flow using popup windows</p>
+    </header>
+
+    <div class="container">
+        <h2>Welcome to the Demo</h2>
+        <p>This demo shows how to authenticate users with their DIDs using a popup flow:</p>
         
-        <!-- Authentication Status -->
-        <div id="auth-status" class="mb-6 p-4 border rounded">
-            <div id="not-authenticated" class="">
-                <p class="mb-4">You are not authenticated. Click below to sign in with DID.</p>
-                <button id="login-btn" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">
-                    Sign in with DID
-                </button>
-            </div>
-            
-            <div id="authenticated" class="hidden">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <h2 class="text-xl font-bold mb-2">Authenticated User</h2>
-                        <p id="auth-time" class="text-sm text-gray-600 mb-4"></p>
-                        <table class="min-w-full mb-4">
-                            <tbody>
-                                <tr>
-                                    <td class="py-1 pr-4 font-medium">User:</td>
-                                    <td id="user-name" class="py-1">Loading...</td>
-                                </tr>
-                                <tr>
-                                    <td class="py-1 pr-4 font-medium">Email:</td>
-                                    <td id="user-email" class="py-1">Loading...</td>
-                                </tr>
-                                <tr>
-                                    <td class="py-1 pr-4 font-medium">DID:</td>
-                                    <td id="user-did" class="break-all py-1">Loading...</td>
-                                </tr>
-                                <tr>
-                                    <td class="py-1 pr-4 font-medium">Address:</td>
-                                    <td id="user-address" class="break-all py-1">Loading...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <button id="logout-btn" class="bg-red-600 text-white py-1 px-3 rounded hover:bg-red-700">
-                        Sign Out
-                    </button>
-                </div>
-                
-                <div id="token-info" class="text-xs bg-gray-50 p-2 mt-4 rounded hidden">
-                    <p class="font-medium mb-1">Token Information:</p>
-                    <p id="token-display" class="break-all"></p>
-                    <p id="token-expiry" class="mt-1"></p>
-                </div>
-            </div>
+        <div class="info">
+            <p><strong>How it works:</strong></p>
+            <ol>
+                <li>Click "Sign in with DID"</li>
+                <li>A popup window will open</li>
+                <li>Connect your wallet and authorize</li>
+                <li>The popup will close automatically</li>
+                <li>This page will show you're verified!</li>
+            </ol>
         </div>
         
-        <!-- Loading State -->
-        <div id="loading" class="hidden mb-6 p-4 border rounded">
-            <div class="animate-spin w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-4"></div>
-            <p class="text-center">Loading...</p>
-        </div>
+        <button onclick="signInWithDID()" class="auth-btn">Sign in with DID</button>
         
-        <!-- Error State -->
-        <div id="error-container" class="hidden mb-6 p-4 border border-red-200 bg-red-50 rounded">
-            <h3 class="font-bold text-red-700 mb-2">Error</h3>
-            <p id="error-message" class="text-red-700"></p>
-            <button id="dismiss-error" class="mt-2 bg-red-600 text-white py-1 px-3 rounded hover:bg-red-700">
-                Dismiss
-            </button>
-        </div>
-        
-        <!-- Debug Controls (only for development) -->
-        <div id="debug-container" class="mb-6 p-4 border rounded">
-            <h3 class="font-bold mb-2 flex justify-between items-center">
-                <span>Debug Tools</span>
-                <button id="toggle-debug" class="text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded">
-                    Show/Hide
-                </button>
-            </h3>
-            <div id="debug-content" class="hidden">
-                <div class="grid grid-cols-2 gap-2 mb-4">
-                    <button id="debug-check-token" class="bg-gray-600 text-white py-1 px-3 rounded hover:bg-gray-700">
-                        Check Token
-                    </button>
-                    <button id="debug-clear-storage" class="bg-gray-600 text-white py-1 px-3 rounded hover:bg-gray-700">
-                        Clear Storage
-                    </button>
-                </div>
-                <pre id="debug-output" class="text-xs bg-gray-100 p-2 h-32 overflow-auto"></pre>
-            </div>
-        </div>
+        <div id="auth-status"></div>
     </div>
 
     <script>
-        // Configuration
-        const CONFIG = {
-            AUTH_SERVER: 'https://did-green.vercel.app',
-            CLIENT_ID: 'c910e5d9118d3417234f556887765d73',
-            REDIRECT_URI: `${window.location.origin}/callback.html`,
-            AUTH_STORAGE_KEY: 'did_auth_token',
-            AUTH_EXPIRY_KEY: 'did_token_expiry'
-        };
-        
-        // DOM elements
-        const notAuthenticated = document.getElementById('not-authenticated');
-        const authenticated = document.getElementById('authenticated');
-        const loginBtn = document.getElementById('login-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-        const loading = document.getElementById('loading');
-        const errorContainer = document.getElementById('error-container');
-        const errorMessage = document.getElementById('error-message');
-        const dismissError = document.getElementById('dismiss-error');
-        const userName = document.getElementById('user-name');
-        const userEmail = document.getElementById('user-email');
-        const userDid = document.getElementById('user-did');
-        const userAddress = document.getElementById('user-address');
-        const authTime = document.getElementById('auth-time');
-        const tokenInfo = document.getElementById('token-info');
-        const tokenDisplay = document.getElementById('token-display');
-        const tokenExpiry = document.getElementById('token-expiry');
-        const debugContainer = document.getElementById('debug-container');
-        const toggleDebug = document.getElementById('toggle-debug');
-        const debugContent = document.getElementById('debug-content');
-        const debugOutput = document.getElementById('debug-output');
-        const debugCheckToken = document.getElementById('debug-check-token');
-        const debugClearStorage = document.getElementById('debug-clear-storage');
-        
-        // Flag for debug mode (development only)
-        const isDebug = true;
-        
-        // Function to show an error message
-        function showError(message) {
-            errorMessage.textContent = message;
-            errorContainer.classList.remove('hidden');
-            loading.classList.add('hidden');
-        }
-        
-        // Function to log to debug output
-        function debugLog(message, data = null) {
-            if (isDebug) {
-                const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-                let logMessage = `[${timestamp}] ${message}`;
-                
-                if (data) {
-                    logMessage += '\n' + JSON.stringify(data, null, 2);
-                }
-                
-                debugOutput.textContent = logMessage + '\n\n' + debugOutput.textContent;
-            }
-        }
-        
-        // Function to check authentication status
-        async function checkAuth() {
-            const token = localStorage.getItem(CONFIG.AUTH_STORAGE_KEY);
-            const expiry = localStorage.getItem(CONFIG.AUTH_EXPIRY_KEY);
+        function signInWithDID() {
+            // Auth server URL
+            const authServerUrl = 'https://did-green.vercel.app';
             
-            // Check if token exists and is not expired
-            if (token && expiry && parseInt(expiry) > Date.now()) {
-                // Show authenticated state
-                notAuthenticated.classList.add('hidden');
-                authenticated.classList.remove('hidden');
-                
-                // Update authentication time
-                const authDate = new Date(parseInt(expiry) - (7 * 24 * 60 * 60 * 1000)); // Assume 7 days validity
-                authTime.textContent = `Authenticated on ${authDate.toLocaleDateString()} at ${authDate.toLocaleTimeString()}`;
-                
-                // Display token info in debug mode
-                if (isDebug) {
-                    tokenInfo.classList.remove('hidden');
-                    tokenDisplay.textContent = `${token.substring(0, 20)}...${token.substring(token.length - 20)}`;
-                    
-                    const expiryDate = new Date(parseInt(expiry));
-                    tokenExpiry.textContent = `Expires on ${expiryDate.toLocaleDateString()} at ${expiryDate.toLocaleTimeString()}`;
-                }
-                
-                // Fetch user info from API
-                await fetchUserInfo(token);
-            } else {
-                // Clear any expired token
-                if (token) {
-                    localStorage.removeItem(CONFIG.AUTH_STORAGE_KEY);
-                    localStorage.removeItem(CONFIG.AUTH_EXPIRY_KEY);
-                }
-                
-                // Show non-authenticated state
-                notAuthenticated.classList.remove('hidden');
-                authenticated.classList.add('hidden');
-            }
-        }
-        
-        // Fetch user info with token
-        async function fetchUserInfo(token) {
-            debugLog("Fetching user info with token", { tokenPrefix: token.substring(0, 10) + "..." });
-            
-            try {
-                // Show loading state for user info
-                userName.textContent = "Loading...";
-                userEmail.textContent = "Loading...";
-                userDid.textContent = "Loading...";
-                userAddress.textContent = "Loading...";
-                
-                const response = await fetch(`${CONFIG.AUTH_SERVER}/api/auth/userinfo`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    },
-                    mode: 'cors'
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    debugLog("Error fetching user info", { 
-                        status: response.status, 
-                        statusText: response.statusText,
-                        error: errorData
-                    });
-                    throw new Error(errorData.error || 'Failed to fetch user info');
-                }
-                
-                const userData = await response.json();
-                debugLog("User info received", userData);
-                
-                // Update UI with user data
-                userName.textContent = userData.name || 'Not provided';
-                userEmail.textContent = userData.email || 'Not provided';
-                userDid.textContent = userData.did || 'Not available';
-                userAddress.textContent = userData.address || 'Not available';
-            } catch (error) {
-                console.error('Error fetching user info:', error);
-                debugLog("Error in fetchUserInfo", { message: error.message });
-                
-                // Show error in user info fields
-                userName.textContent = "Error loading data";
-                userEmail.textContent = "Error loading data";
-                userDid.textContent = "Error loading data";
-                userAddress.textContent = "Error loading data";
-                
-                // If it's an auth error, sign out
-                if (error.message.includes('token') || error.message.includes('unauthorized')) {
-                    localStorage.removeItem(CONFIG.AUTH_STORAGE_KEY);
-                    localStorage.removeItem(CONFIG.AUTH_EXPIRY_KEY);
-                    setTimeout(checkAuth, 2000); // Check auth again after delay
-                }
-            }
-        }
-        
-        // Handle login button click
-        loginBtn.addEventListener('click', function() {
-            // Generate a random state parameter to prevent CSRF
-            const state = Math.random().toString(36).substring(2, 15);
-            localStorage.setItem('auth_state', state);
-            
-            // Construct the authorization URL
-            const authUrl = new URL(`${CONFIG.AUTH_SERVER}/auth/login`);
-            authUrl.searchParams.append('client_id', CONFIG.CLIENT_ID);
-            authUrl.searchParams.append('redirect_uri', CONFIG.REDIRECT_URI);
-            authUrl.searchParams.append('state', state);
-            
-            debugLog("Redirecting to auth page", { url: authUrl.toString() });
-            
-            // Redirect to the authorization page
-            window.location.href = authUrl.toString();
-        });
-        
-        // Handle logout button click
-        logoutBtn.addEventListener('click', function() {
-            localStorage.removeItem(CONFIG.AUTH_STORAGE_KEY);
-            localStorage.removeItem(CONFIG.AUTH_EXPIRY_KEY);
-            debugLog("Logged out user");
-            checkAuth();
-        });
-        
-        // Handle dismiss error button
-        dismissError.addEventListener('click', function() {
-            errorContainer.classList.add('hidden');
-        });
-        
-        // Toggle debug info
-        toggleDebug.addEventListener('click', function() {
-            debugContent.classList.toggle('hidden');
-        });
-        
-        // Debug: Check token
-        debugCheckToken.addEventListener('click', function() {
-            const token = localStorage.getItem(CONFIG.AUTH_STORAGE_KEY);
-            const expiry = localStorage.getItem(CONFIG.AUTH_EXPIRY_KEY);
-            
-            debugLog("Current token state", {
-                hasToken: !!token,
-                tokenPrefix: token ? token.substring(0, 10) + "..." : null,
-                expiry: expiry ? new Date(parseInt(expiry)).toISOString() : null,
-                isExpired: expiry ? parseInt(expiry) < Date.now() : true
+            // Authentication parameters
+            const authParams = new URLSearchParams({
+                client_id: 'c910e5d9118d3417234f556887765d73',
+                redirect_uri: window.location.origin + '/callback.html',
+                response_type: 'code',
+                state: 'popup_flow'
             });
-        });
-        
-        // Debug: Clear storage
-        debugClearStorage.addEventListener('click', function() {
-            localStorage.removeItem(CONFIG.AUTH_STORAGE_KEY);
-            localStorage.removeItem(CONFIG.AUTH_EXPIRY_KEY);
-            localStorage.removeItem('auth_state');
-            debugLog("Cleared all authentication storage");
-            checkAuth();
-        });
-        
-        // Hide debug panel in production
-        if (!isDebug) {
-            debugContainer.classList.add('hidden');
+            
+            // Calculate popup dimensions
+            const width = 500;
+            const height = 700;
+            const left = (window.innerWidth - width) / 2;
+            const top = (window.innerHeight - height) / 2;
+            
+            // Open the popup
+            const popup = window.open(
+                `${authServerUrl}/auth/login?${authParams.toString()}`,
+                'DID Authentication',
+                `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+            );
+            
+            // Handle message from the popup
+            window.addEventListener('message', function(event) {
+                // Verify the origin to prevent security issues
+                if (event.origin === authServerUrl) {
+                    // Check the message type
+                    if (event.data.type === 'did-auth-success') {
+                        console.log('Authentication successful:', event.data);
+                        
+                        // Update UI to show verified status
+                        document.getElementById('auth-status').textContent = 'You are verified!';
+                        document.getElementById('auth-status').classList.add('verified');
+                        
+                        // Close the popup if it's still open
+                        if (popup && !popup.closed) {
+                            popup.close();
+                        }
+                    }
+                }
+            });
+            
+            // Optional: Check if popup was blocked
+            setTimeout(() => {
+                if (popup === null || popup.closed) {
+                    alert("Popup was blocked! Please allow popups for this website.");
+                }
+            }, 1000);
         }
-        
-        // Initialize the page
-        checkAuth();
     </script>
 </body>
 </html>
