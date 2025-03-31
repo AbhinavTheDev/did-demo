@@ -1,7 +1,7 @@
 // Configuration for DID Auth
 const CONFIG = {
     // DID Auth Server URL
-    AUTH_SERVER: 'https://did-hero.vercel.app/',
+    AUTH_SERVER: 'https://did-hero.vercel.app',
     
     // Client ID and secret obtained
     CLIENT_ID: '', 
